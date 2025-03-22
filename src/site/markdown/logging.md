@@ -1,6 +1,8 @@
 title: MyBatis 3 | Logging
 author: Clinton Begin
 
+<h1 class="d-none">Avoid blank site</h1>
+
 ## Logging
 
 MyBatis provides logging information through the use of an internal log factory. The internal log factory will delegate logging information to one of the following log implementations:
@@ -53,7 +55,7 @@ To see MyBatis logging statements you may enable logging on a package, a mapper 
 
 Again, how you do this is dependent on the logging implementation in use. We'll show how to do it with SLF4J(Logback). Configuring the logging services is simply a matter of including one or more extra configuration files (e.g. `logback.xml`) and sometimes a new JAR file. The following example configuration will configure full logging services using SLF4J(Logback) as a provider. There are 2 steps.
 
-#### Step 1: Add the SLF4J + Logback JAR files 
+#### Step 1: Add the SLF4J + Logback JAR files
 
 Because we are using SLF4J(Logback), we will need to ensure its JAR file is available to our application. To use SLF4J(Logback), you need to add the JAR file to your application classpath.
 
@@ -69,7 +71,7 @@ If you use the maven, you can download jar files by adding following settings on
 </dependency>
 ```
 
-#### Step 2: Configure Logback 
+#### Step 2: Configure Logback
 
 Configuring Logback is simple. Suppose you want to enable the log for this mapper:
 
@@ -114,7 +116,7 @@ If you want to tune the logging at a finer level you can turn logging on for spe
 </logger>
 ```
 
-By the contrary you may want want to enable logging for a group of mappers. In that case you should add as a logger the root package where your mappers reside:
+By the contrary you may want to enable logging for a group of mappers. In that case you should add as a logger the root package where your mappers reside:
 
 ```xml
 <logger name="org.mybatis.example">
@@ -166,7 +168,7 @@ Yes, as you may have noticed, there is no difference in configuring logging for 
 
 The remaining configuration in the `logback.xml` file is used to configure the appenders, which is beyond the scope of this document. However, you can find more information at the [Logback](https://logback.qos.ch/) website. Or, you could simply experiment with it to see what effects the different configuration options have.
 
-#### Configuration example for Log4j 2 
+#### Configuration example for Log4j 2
 
 ```xml
 <!-- pom.xml -->
@@ -198,7 +200,7 @@ The remaining configuration in the `logback.xml` file is used to configure the a
 </Configuration>
 ```
 
-#### Configuration example for Log4j 
+#### Configuration example for Log4j
 
 ```xml
 <!-- pom.xml -->
@@ -220,7 +222,7 @@ log4j.appender.stdout.layout=org.apache.log4j.PatternLayout
 log4j.appender.stdout.layout.ConversionPattern=%5p [%t] - %m%n
 ```
 
-#### Configuration example for JDK logging 
+#### Configuration example for JDK logging
 
 ```properties
 # logging.properties

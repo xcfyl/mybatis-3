@@ -1,5 +1,5 @@
 /*
- *    Copyright 2009-2023 the original author or authors.
+ *    Copyright 2009-2025 the original author or authors.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -207,18 +207,23 @@ public abstract class BaseExecutor implements Executor {
     List<ParameterMapping> parameterMappings = boundSql.getParameterMappings();
     TypeHandlerRegistry typeHandlerRegistry = ms.getConfiguration().getTypeHandlerRegistry();
     // mimic DefaultParameterHandler logic
+    MetaObject metaObject = null;
     for (ParameterMapping parameterMapping : parameterMappings) {
       if (parameterMapping.getMode() != ParameterMode.OUT) {
         Object value;
         String propertyName = parameterMapping.getProperty();
-        if (boundSql.hasAdditionalParameter(propertyName)) {
+        if (parameterMapping.hasValue()) {
+          value = parameterMapping.getValue();
+        } else if (boundSql.hasAdditionalParameter(propertyName)) {
           value = boundSql.getAdditionalParameter(propertyName);
         } else if (parameterObject == null) {
           value = null;
         } else if (typeHandlerRegistry.hasTypeHandler(parameterObject.getClass())) {
           value = parameterObject;
         } else {
-          MetaObject metaObject = configuration.newMetaObject(parameterObject);
+          if (metaObject == null) {
+            metaObject = configuration.newMetaObject(parameterObject);
+          }
           value = metaObject.getValue(propertyName);
         }
         cacheKey.update(value);
