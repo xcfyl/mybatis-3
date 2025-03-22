@@ -33,6 +33,8 @@ import org.apache.ibatis.io.ResolverUtil;
 import org.apache.ibatis.io.Resources;
 
 /**
+ * 类型别名注册器
+ *
  * @author Clinton Begin
  */
 public class TypeAliasRegistry {
