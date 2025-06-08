@@ -62,7 +62,9 @@ public class SqlSessionFactoryBuilder {
     }
   }
 
+  // 加载配置文件
   public SqlSessionFactory build(InputStream inputStream) {
+    // 创建SqlSessionFactory
     return build(inputStream, null, null);
   }
 
@@ -76,6 +78,7 @@ public class SqlSessionFactoryBuilder {
 
   public SqlSessionFactory build(InputStream inputStream, String environment, Properties properties) {
     try {
+      // 创建用于解析xml配置的对象
       XMLConfigBuilder parser = new XMLConfigBuilder(inputStream, environment, properties);
       return build(parser.parse());
     } catch (Exception e) {

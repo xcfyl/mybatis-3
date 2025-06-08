@@ -15,12 +15,11 @@
  */
 package org.apache.ibatis.parsing;
 
-import java.io.InputStream;
-import java.io.Reader;
-import java.io.StringReader;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
+import org.apache.ibatis.builder.BuilderException;
+import org.w3c.dom.Document;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.*;
 
 import javax.xml.XMLConstants;
 import javax.xml.namespace.QName;
@@ -29,18 +28,16 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathFactory;
-
-import org.apache.ibatis.builder.BuilderException;
-import org.w3c.dom.Document;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-import org.xml.sax.EntityResolver;
-import org.xml.sax.ErrorHandler;
-import org.xml.sax.InputSource;
-import org.xml.sax.SAXException;
-import org.xml.sax.SAXParseException;
+import java.io.InputStream;
+import java.io.Reader;
+import java.io.StringReader;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
 
 /**
+ * 提供mybatis的xml解析的能力
+ *
  * @author Clinton Begin
  * @author Kazuki Shimizu
  */
@@ -136,12 +133,29 @@ public class XPathParser {
     this.variables = variables;
   }
 
+  /**
+   * 根据xpath表达式从文档中解析出一个string数据
+   *
+   * @param expression
+   * @return
+   */
   public String evalString(String expression) {
     return evalString(document, expression);
   }
 
+  /**
+   * 解析string比较特殊的是，string中可以包含一些占位符，mybatis需要解析这些占位符，并使用properties中提供的元素，替换
+   * 占位符中的内容，比如连接mybatis的时候，可以指定${username}，这个占位符，当properties中包含username元素，
+   * 那么mybatis会替换成username元素中的内容
+   *
+   * @param root
+   * @param expression
+   * @return
+   */
   public String evalString(Object root, String expression) {
+    // 从文档中提取出来一个string，这部分是xpath中的内容
     String result = (String) evaluate(expression, root, XPathConstants.STRING);
+    //
     return PropertyParser.parse(result, variables);
   }
 
@@ -226,9 +240,16 @@ public class XPathParser {
     }
   }
 
+  /**
+   * 创建xml文档
+   *
+   * @param inputSource
+   * @return
+   */
   private Document createDocument(InputSource inputSource) {
     // important: this must only be called AFTER common constructor
     try {
+      // java的xml解析类库的类了，包括XPath对象也是java的xml解析类库里面的类
       DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
       factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
       factory.setValidating(validation);
@@ -257,17 +278,23 @@ public class XPathParser {
           // NOP
         }
       });
+      // 创建xml文档对象
       return builder.parse(inputSource);
     } catch (Exception e) {
       throw new BuilderException("Error creating document instance.  Cause: " + e, e);
     }
   }
 
+  // 构造器公用的一段方法吧
   private void commonConstructor(boolean validation, Properties variables, EntityResolver entityResolver) {
     this.validation = validation;
+    // 加载本地的dtd文件，用于验证xml格式和语法的合法性
     this.entityResolver = entityResolver;
+    // 外部属性
     this.variables = variables;
+    // 找到的是XPathFactoryImpl
     XPathFactory factory = XPathFactory.newInstance();
+    // 创建xpath
     this.xpath = factory.newXPath();
   }
 
