@@ -15,12 +15,6 @@
  */
 package org.apache.ibatis.builder.xml;
 
-import java.io.InputStream;
-import java.io.Reader;
-import java.util.Properties;
-
-import javax.sql.DataSource;
-
 import org.apache.ibatis.builder.BaseBuilder;
 import org.apache.ibatis.builder.BuilderException;
 import org.apache.ibatis.datasource.DataSourceFactory;
@@ -42,6 +36,11 @@ import org.apache.ibatis.reflection.wrapper.ObjectWrapperFactory;
 import org.apache.ibatis.session.*;
 import org.apache.ibatis.transaction.TransactionFactory;
 import org.apache.ibatis.type.JdbcType;
+
+import javax.sql.DataSource;
+import java.io.InputStream;
+import java.io.Reader;
+import java.util.Properties;
 
 /**
  * @author Clinton Begin
@@ -86,26 +85,48 @@ public class XMLConfigBuilder extends BaseBuilder {
 
   public XMLConfigBuilder(Class<? extends Configuration> configClass, InputStream inputStream, String environment,
       Properties props) {
-    // 创建XMLConfigBuilder，需要先了解一下XPathParser
+    // XPathParser
+    // 通过xpath语法解析xml中的元素
+    // XMLMapperEntityResolver
+    // 解析xml的时候需要验证xml语法的合法性，默认验证方式是dtd的方式，而dtd文件默认需要联网下载，为了避免网络太差无法下载
+    // mybatis通过实现XMLMapperEntityResolver，可以避免走网络加载而是直接走本地文件加载
+    // 创建XPathParser的时候，其实就已经创建好mybatis-config.xml的Document对象了
     this(configClass, new XPathParser(inputStream, true, props, new XMLMapperEntityResolver()), environment, props);
   }
 
+  /**
+   * XMLConfigBuilder其实是通过XPathParser解析mybatis-config.xml的，然后根据mybatis-config.xml的元素进行解析
+   *
+   * @param configClass
+   * @param parser
+   * @param environment
+   * @param props
+   */
   private XMLConfigBuilder(Class<? extends Configuration> configClass, XPathParser parser, String environment,
       Properties props) {
+    // 通过反射的方式创建Configuration对象
     super(newConfig(configClass));
+    // todo 暂时不知道这个ErrorContext是为了做什么用的
     ErrorContext.instance().resource("SQL Mapper Configuration");
+    // Configuration对象中存放额外的配置信息
     this.configuration.setVariables(props);
+    // 是否解析的标识位，目前还是未解析的状态
     this.parsed = false;
+    // 激活的环境，因为在mybatis-config.xml文件中，可以配置多个环境，这里选择要使用哪个环境
     this.environment = environment;
+    // XPathParser，解析xml文件全靠这个类了，因为创建这个类的时候，已经创建好了
+    // mybatis-config.xml文件的Document对象
     this.parser = parser;
   }
 
   public Configuration parse() {
+    // 如果已经加载了，那么直接抛异常，并不能保证线程安全
     if (parsed) {
       throw new BuilderException("Each XMLConfigBuilder can only be used once.");
     }
+    // 将解析的标识位设置为true
     parsed = true;
-    // 解析mybatis的配置
+    // 解析mybatis的配置，configuration是mybatis-config.xml的根元素
     parseConfiguration(parser.evalNode("/configuration"));
     return configuration;
   }
@@ -118,6 +139,7 @@ public class XMLConfigBuilder extends BaseBuilder {
   private void parseConfiguration(XNode root) {
     try {
       // issue #117 read properties first
+      // 解析configuration元素下面的properties元素
       propertiesElement(root.evalNode("properties"));
       Properties settings = settingsAsProperties(root.evalNode("settings"));
       loadCustomVfsImpl(settings);
@@ -242,9 +264,13 @@ public class XMLConfigBuilder extends BaseBuilder {
     if (context == null) {
       return;
     }
+    // 获取properties标签下面的所有子元素
     Properties defaults = context.getChildrenAsProperties();
+    // 获取properties标签的resource属性
     String resource = context.getStringAttribute("resource");
+    // 获取properties标签的url属性
     String url = context.getStringAttribute("url");
+    // url和resource属性不能同时存在，如果同时存在抛出异常
     if (resource != null && url != null) {
       throw new BuilderException(
           "The properties element cannot specify both a URL and a resource based property file reference.  Please specify one or the other.");
