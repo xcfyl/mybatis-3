@@ -132,28 +132,41 @@ public class XMLConfigBuilder extends BaseBuilder {
   }
 
   /**
-   * 从xml中解析mybatis的配置
+   * 从xml中解析mybatis-config.xml，将其转为Configuration对象
    *
    * @param root
    */
   private void parseConfiguration(XNode root) {
     try {
       // issue #117 read properties first
-      // 解析configuration元素下面的properties元素
+      // 解析configuration元素下面的properties标签
       propertiesElement(root.evalNode("properties"));
+      // 解析configuration元素下面的settings标签，并将setting标签中的元素转为键值对形式
       Properties settings = settingsAsProperties(root.evalNode("settings"));
+      // todo 在mybatis里面vfs是一个什么概念？虚拟文件系统吗？是干什么的？
       loadCustomVfsImpl(settings);
+      // 加在自定义日志实现
       loadCustomLogImpl(settings);
+      // 解析configuration元素下面的typeAliases标签
       typeAliasesElement(root.evalNode("typeAliases"));
+      // 解析configuration元素下面的plugin标签
       pluginsElement(root.evalNode("plugins"));
+      // 解析configuration元素下面的objectFactory标签
       objectFactoryElement(root.evalNode("objectFactory"));
+      // 解析configuration元素下面的objectWrapperFactory标签
       objectWrapperFactoryElement(root.evalNode("objectWrapperFactory"));
+      // 解析configuration元素下面的reflectorFactory标签
       reflectorFactoryElement(root.evalNode("reflectorFactory"));
+      // 解析configuration元素下面的setting标签
       settingsElement(settings);
       // read it after objectFactory and objectWrapperFactory issue #631
+      // 解析configuration元素下面的environments标签
       environmentsElement(root.evalNode("environments"));
+      // 解析configuration元素下面的databaseIdProvider标签
       databaseIdProviderElement(root.evalNode("databaseIdProvider"));
+      // 解析configuration元素下面的typeHandlers标签
       typeHandlersElement(root.evalNode("typeHandlers"));
+      // 解析configuration元素下面的mappers标签
       mappersElement(root.evalNode("mappers"));
     } catch (Exception e) {
       throw new BuilderException("Error parsing SQL Mapper Configuration. Cause: " + e, e);
@@ -164,9 +177,12 @@ public class XMLConfigBuilder extends BaseBuilder {
     if (context == null) {
       return new Properties();
     }
+    // 获取settings标签下面的子元素
     Properties props = context.getChildrenAsProperties();
     // Check that all settings are known to the configuration class
+    // 获取Configuration类的元类型信息，MetaClass是mybatis自己封装的，用于封装JavaBean的元信息，比如属性名，属性类型，属性的getter和setter方法等等
     MetaClass metaConfig = MetaClass.forClass(Configuration.class, localReflectorFactory);
+    // 校验settings标签下面的子元素的key是否合法
     for (Object key : props.keySet()) {
       if (!metaConfig.hasSetter(String.valueOf(key))) {
         throw new BuilderException(
@@ -200,18 +216,26 @@ public class XMLConfigBuilder extends BaseBuilder {
     if (context == null) {
       return;
     }
+    // 获取typeAliases标签下面的子元素
     for (XNode child : context.getChildren()) {
+      // 如果发现package标签，那么就进行批量注册，包下面的类都会进行注册
       if ("package".equals(child.getName())) {
         String typeAliasPackage = child.getStringAttribute("name");
         configuration.getTypeAliasRegistry().registerAliases(typeAliasPackage);
       } else {
+        // 如果name不是package标签，那么就是typeAlias标签，进行单个注册
+        // 获取typeAlias标签的alias属性和type属性
+        // 其中alias属性是别名，type属性是要注册别名的类
         String alias = child.getStringAttribute("alias");
         String type = child.getStringAttribute("type");
         try {
+          // 获取type对应的class对象
           Class<?> clazz = Resources.classForName(type);
           if (alias == null) {
+            // 如果alias属性为空，那么默认通过注解的方式或者通过类名进行注册别名
             typeAliasRegistry.registerAlias(clazz);
           } else {
+            // 否则直接使用给定的别名进行注册
             typeAliasRegistry.registerAlias(alias, clazz);
           }
         } catch (ClassNotFoundException e) {
@@ -223,23 +247,42 @@ public class XMLConfigBuilder extends BaseBuilder {
 
   private void pluginsElement(XNode context) throws Exception {
     if (context != null) {
+      // 获取plugins标签下面的子元素
       for (XNode child : context.getChildren()) {
+        // 获取子元素plugin的interceptor属性，interceptor属性是拦截器的实现类，由该类拦截
+        // mybatis执行SQL的部分关键流程，比如改写sql
         String interceptor = child.getStringAttribute("interceptor");
+        // 获取子元素plugin的子元素，并将其转换为键值对
         Properties properties = child.getChildrenAsProperties();
+        // 通过反射的方式创建拦截器实例
         Interceptor interceptorInstance = (Interceptor) resolveClass(interceptor).getDeclaredConstructor()
             .newInstance();
+        // 设置拦截器实例需要的属性
         interceptorInstance.setProperties(properties);
+        // 注册拦截器
         configuration.addInterceptor(interceptorInstance);
       }
     }
   }
 
+  /**
+   * mybatis创建对象的时候，默认是使用ObjectFactory创建对象，ObjectFactory默认是DefaultObjectFactory
+   * 为了方便扩展，这里提供objectFactory属性，用户可以自定义ObjectFactory
+   *
+   * @param context
+   * @throws Exception
+   */
   private void objectFactoryElement(XNode context) throws Exception {
     if (context != null) {
+      // 首先获取objectFactory标签的type属性
       String type = context.getStringAttribute("type");
+      // 获取objectFactory标签的子元素
       Properties properties = context.getChildrenAsProperties();
+      // 通过空参数构造函数创建对象
       ObjectFactory factory = (ObjectFactory) resolveClass(type).getDeclaredConstructor().newInstance();
+      // 设置属性
       factory.setProperties(properties);
+      // 设置对象工厂
       configuration.setObjectFactory(factory);
     }
   }
@@ -254,8 +297,11 @@ public class XMLConfigBuilder extends BaseBuilder {
 
   private void reflectorFactoryElement(XNode context) throws Exception {
     if (context != null) {
+      // 获取reflectorFactory标签的type属性
       String type = context.getStringAttribute("type");
+      // 通过反射创建ReflectorFactory对象
       ReflectorFactory factory = (ReflectorFactory) resolveClass(type).getDeclaredConstructor().newInstance();
+      // 设置ReflectorFactory
       configuration.setReflectorFactory(factory);
     }
   }
@@ -266,9 +312,10 @@ public class XMLConfigBuilder extends BaseBuilder {
     }
     // 获取properties标签下面的所有子元素
     Properties defaults = context.getChildrenAsProperties();
-    // 获取properties标签的resource属性
+    // 获取properties标签的resource属性，resource属性可以指定一个外部的properties文件
+    // mybatis会获取该文件中定义的键值对数据
     String resource = context.getStringAttribute("resource");
-    // 获取properties标签的url属性
+    // 获取properties标签的url属性，url属性可以指定从网络中加载数据
     String url = context.getStringAttribute("url");
     // url和resource属性不能同时存在，如果同时存在抛出异常
     if (resource != null && url != null) {
@@ -276,15 +323,21 @@ public class XMLConfigBuilder extends BaseBuilder {
           "The properties element cannot specify both a URL and a resource based property file reference.  Please specify one or the other.");
     }
     if (resource != null) {
+      // 从文件中加载properties
       defaults.putAll(Resources.getResourceAsProperties(resource));
     } else if (url != null) {
+      // 从网络中加载properties
       defaults.putAll(Resources.getUrlAsProperties(url));
     }
+    // 这个是手动设置的键值对
     Properties vars = configuration.getVariables();
     if (vars != null) {
       defaults.putAll(vars);
     }
+    // parser自己也要缓存一份，可能是为了解析的时候用吧
+    // 为什么要做这种数据隔离呢
     parser.setVariables(defaults);
+    // 这里相当于是拿全了的键值对
     configuration.setVariables(defaults);
   }
 
@@ -299,6 +352,8 @@ public class XMLConfigBuilder extends BaseBuilder {
     configuration.setAggressiveLazyLoading(booleanValueOf(props.getProperty("aggressiveLazyLoading"), false));
     configuration.setUseColumnLabel(booleanValueOf(props.getProperty("useColumnLabel"), true));
     configuration.setUseGeneratedKeys(booleanValueOf(props.getProperty("useGeneratedKeys"), false));
+    // 参考这篇博客对executorType的设置
+    // https://wch853.github.io/posts/mybatis/MyBatis%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%EF%BC%88%E5%85%AB%EF%BC%89%EF%BC%9A%E6%89%A7%E8%A1%8C%E5%99%A8.html#%E5%88%9B%E5%BB%BA%E6%89%A7%E8%A1%8C%E5%99%A8
     configuration.setDefaultExecutorType(ExecutorType.valueOf(props.getProperty("defaultExecutorType", "SIMPLE")));
     configuration.setDefaultStatementTimeout(integerValueOf(props.getProperty("defaultStatementTimeout"), null));
     configuration.setDefaultFetchSize(integerValueOf(props.getProperty("defaultFetchSize"), null));
@@ -329,16 +384,23 @@ public class XMLConfigBuilder extends BaseBuilder {
       return;
     }
     if (environment == null) {
+      // 记录默认环境名称
       environment = context.getStringAttribute("default");
     }
     for (XNode child : context.getChildren()) {
       String id = child.getStringAttribute("id");
+      // 这里只记录默认的环境名称，非默认的不进行解析了
       if (isSpecifiedEnvironment(id)) {
+        // 获取事务管理器工厂
         TransactionFactory txFactory = transactionManagerElement(child.evalNode("transactionManager"));
+        // 获取数据源工厂
         DataSourceFactory dsFactory = dataSourceElement(child.evalNode("dataSource"));
+        // 从工厂中获取数据源
         DataSource dataSource = dsFactory.getDataSource();
+        // 创建Environment对象，记录事务管理器工厂和数据源
         Environment.Builder environmentBuilder = new Environment.Builder(id).transactionFactory(txFactory)
             .dataSource(dataSource);
+        // 设置environment对象
         configuration.setEnvironment(environmentBuilder.build());
         break;
       }
@@ -351,15 +413,19 @@ public class XMLConfigBuilder extends BaseBuilder {
     }
     String type = context.getStringAttribute("type");
     // awful patch to keep backward compatibility
+    // 为了向前兼容，所以这里配置VENDOR和DB_VENDOR是一样的
     if ("VENDOR".equals(type)) {
       type = "DB_VENDOR";
     }
     Properties properties = context.getChildrenAsProperties();
+    // 根据类型反射获取对应的DatabaseIdProvider，如果是DB_VENDOR的话，默认使用的是VendorDatabaseIdProvider
+    // VendorDatabaseIdProvider主要是根据数据库的ProductName进行匹配，如果在properties中指定了数据库的别名，那么优先找第一个能匹配上的
     DatabaseIdProvider databaseIdProvider = (DatabaseIdProvider) resolveClass(type).getDeclaredConstructor()
         .newInstance();
     databaseIdProvider.setProperties(properties);
     Environment environment = configuration.getEnvironment();
     if (environment != null) {
+      // 获取数据库标识，后面可以根据这个标识去执行指定的SQL
       String databaseId = databaseIdProvider.getDatabaseId(environment.getDataSource());
       configuration.setDatabaseId(databaseId);
     }
@@ -367,9 +433,13 @@ public class XMLConfigBuilder extends BaseBuilder {
 
   private TransactionFactory transactionManagerElement(XNode context) throws Exception {
     if (context != null) {
+      // 获取事务管理器工厂的类型
       String type = context.getStringAttribute("type");
+      // 获取子元素
       Properties props = context.getChildrenAsProperties();
+      // resolveClass，是根据类型或者别名来获取对象，然后通过反射的方式创建对象
       TransactionFactory factory = (TransactionFactory) resolveClass(type).getDeclaredConstructor().newInstance();
+      // 设置属性
       factory.setProperties(props);
       return factory;
     }
@@ -391,9 +461,14 @@ public class XMLConfigBuilder extends BaseBuilder {
     if (context == null) {
       return;
     }
+
+    // 获取typeHandlers标签下面的所有子元素
     for (XNode child : context.getChildren()) {
+      // 如果子元素名称是package的话
       if ("package".equals(child.getName())) {
+        // 获取package标签的name属性，name属性是一个包名
         String typeHandlerPackage = child.getStringAttribute("name");
+        // 该包下面的所有实现了TypeHandler接口的类都会被注册为TypeHandler
         typeHandlerRegistry.register(typeHandlerPackage);
       } else {
         String javaTypeName = child.getStringAttribute("javaType");
@@ -419,9 +494,13 @@ public class XMLConfigBuilder extends BaseBuilder {
     if (context == null) {
       return;
     }
+    // 获取mappers标签下的所有子元素
     for (XNode child : context.getChildren()) {
+      // 如果子元素的名称是package
       if ("package".equals(child.getName())) {
+        // 获取name属性，name是包路径
         String mapperPackage = child.getStringAttribute("name");
+        // 添加这个包下面的所有Mapper接口到配置中
         configuration.addMappers(mapperPackage);
       } else {
         String resource = child.getStringAttribute("resource");

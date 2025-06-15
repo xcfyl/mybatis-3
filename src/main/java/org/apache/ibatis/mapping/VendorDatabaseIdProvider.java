@@ -15,13 +15,12 @@
  */
 package org.apache.ibatis.mapping;
 
+import org.apache.ibatis.builder.BuilderException;
+
+import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Properties;
-
-import javax.sql.DataSource;
-
-import org.apache.ibatis.builder.BuilderException;
 
 /**
  * Vendor DatabaseId provider.
@@ -54,10 +53,14 @@ public class VendorDatabaseIdProvider implements DatabaseIdProvider {
   }
 
   private String getDatabaseName(DataSource dataSource) throws SQLException {
+    // 获取数据库的产品名称
     String productName = getDatabaseProductName(dataSource);
     if (properties == null || properties.isEmpty()) {
+      // 如果没有指定的属性别名，那么直接返回原生的数据库产品名称
       return productName;
     }
+    // 如果用户指定了属性别名，那么就进行匹配，如果没有匹配上，那么返回null
+    // 这个返回null是不是有点风险啊，为什么不是返回原始的数据库名称呢，这样还可以有一个兜底
     return properties.entrySet().stream().filter(entry -> productName.contains((String) entry.getKey()))
         .map(entry -> (String) entry.getValue()).findFirst().orElse(null);
   }

@@ -15,12 +15,10 @@
  */
 package org.apache.ibatis.io;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import org.apache.ibatis.logging.Log;
+import org.apache.ibatis.logging.LogFactory;
+
+import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLEncoder;
@@ -32,9 +30,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
-
-import org.apache.ibatis.logging.Log;
-import org.apache.ibatis.logging.LogFactory;
 
 /**
  * A default implementation of {@link VFS} that works for most application servers.
@@ -248,8 +243,12 @@ public class DefaultVFS extends VFS {
       }
     }
 
+    // 为什么还有这段代码，是因为在spring多模块环境中，jar中可能嵌套jar
+    // 具体可以参考这个博客https://www.scienjus.com/mybatis-vfs-bug/
+    // scienjus-web/target/scienjus-web.jar!/lib/scienjus-domain.jar!/com/scienjus/domain
     // Look for the .jar extension and chop off everything after that
     StringBuilder jarUrl = new StringBuilder(url.toExternalForm());
+    // 如果是嵌套jar的话，找到最后一个.jar的位置
     int index = jarUrl.lastIndexOf(".jar");
     if (index < 0) {
       if (log.isDebugEnabled()) {
@@ -264,7 +263,9 @@ public class DefaultVFS extends VFS {
 
     // Try to open and test it
     try {
+      // 这里是一个jar包
       URL testUrl = new URL(jarUrl.toString());
+      // 判断是否是一个jar包
       if (isJar(testUrl)) {
         return testUrl;
       }

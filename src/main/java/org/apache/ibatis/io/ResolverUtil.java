@@ -15,14 +15,14 @@
  */
 package org.apache.ibatis.io;
 
+import org.apache.ibatis.logging.Log;
+import org.apache.ibatis.logging.LogFactory;
+
 import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
-import org.apache.ibatis.logging.Log;
-import org.apache.ibatis.logging.LogFactory;
 
 /**
  * <p>
@@ -244,12 +244,16 @@ public class ResolverUtil<T> {
    * @return the resolver util
    */
   public ResolverUtil<T> find(Test test, String packageName) {
+    // 获取包路径，就是把.替换为/
     String path = getPackagePath(packageName);
 
     try {
+      // VFS是一个抽象类，VFS.getInstance()返回的是一个VFS实例，用于从指定位置获取文件列表
+      // 比如jar包，jboss的虚拟文件系统等，有多个实现类，但是基本上我们开发都只会用到DefaultVFS，这个VFS用于从jar包中获取文件列表
       List<String> children = VFS.getInstance().list(path);
       for (String child : children) {
         if (child.endsWith(".class")) {
+          // 如果当前文件是一个class类文件，并且还满足test的matches条件，那么就加入到ResolverUtil的matches列表中
           addIfMatching(test, child);
         }
       }
